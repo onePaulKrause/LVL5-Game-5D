@@ -1,0 +1,17 @@
+# Contributing
+
+This repo is a curated public release. Primary development happens on a
+private tree and syncs here, so the public history is intentionally
+clean and sparse.
+
+Issues and PRs are welcome. Ground rules:
+
+- Keep it one file: `index.html`. Zero dependencies, zero build step,
+  zero network calls. PRs that add any of those will be declined
+  regardless of merit.
+- ASCII-only source.
+- Small, focused PRs over large rewrites.
+- By submitting a pull request you agree your contribution is licensed
+  under the MIT license of this repository.
+
+Bug reports: include browser + OS, and console output if any.
