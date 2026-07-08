@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>LVL5</title>
+<style>
+  :root{ --bg:#0F1622; --panel:#161F2E; --panel2:#1C273A; --line:#33415F;
+    --ink:#E7E0CF; --muted:#8A96AC; --faint:#586477; --gold:#D4A24E; --gold-soft:#E7C079; }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; height:100%;}
+  body{ background:radial-gradient(120% 80% at 50% -10%, #18223400, #0B111B 90%), var(--bg);
+    color:var(--ink); font-family:ui-monospace,"SF Mono","Cascadia Code",Menlo,monospace;
+    display:flex; justify-content:center; min-height:100%; padding:14px; }
+  .frame{ width:100%; max-width:480px; display:flex; flex-direction:column; gap:11px; }
+  .plate{ display:flex; align-items:baseline; justify-content:space-between; gap:10px;
+    border-bottom:1px solid var(--line); padding-bottom:9px; }
+  .title{ font-family:Georgia,"Iowan Old Style",serif; font-size:32px; line-height:1; letter-spacing:.13em; font-weight:600; }
+  .title .five{ color:var(--gold); }
+  .eyebrow{ font-size:9.5px; letter-spacing:.3em; text-transform:uppercase; color:var(--muted); }
+  .tier{ text-align:right; } .tier b{ font-family:Georgia,serif; font-size:20px; letter-spacing:.08em; }
+  .stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--line); border:1px solid var(--line); }
+  .stat{ background:var(--panel); padding:7px 5px; text-align:center; }
+  .stat .k{ font-size:8.5px; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); }
+  .stat .v{ font-size:17px; margin-top:3px; font-variant-numeric:tabular-nums; }
+  .stat .v.gold{ color:var(--gold); }
+  .play{ display:grid; grid-template-columns:1fr auto; gap:11px; align-items:start; }
+  .wellwrap{ position:relative; }
+  canvas#well{ display:block; width:100%; height:auto; background:var(--panel);
+    border:1px solid var(--line); box-shadow:inset 0 0 0 1px #0a0f18, 0 10px 40px -20px #000; }
+  .seamnote{ position:absolute; top:6px; left:0; right:0; text-align:center; font-size:9px;
+    letter-spacing:.2em; text-transform:uppercase; color:var(--gold); opacity:.5; pointer-events:none; }
+  .side{ width:88px; display:flex; flex-direction:column; gap:9px; }
+  .label{ font-size:8.5px; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); margin-bottom:4px; }
+  .box{ background:var(--panel); border:1px solid var(--line); padding:7px; }
+  canvas.mini{ display:block; width:100%; height:auto; }
+  .combo .v{ font-family:Georgia,serif; font-size:20px; color:var(--gold); text-align:center; }
+  .combo.idle .v{ color:var(--muted); }
+  .pad{ display:flex; flex-direction:column; gap:6px; }
+  .row{ display:grid; gap:6px; }
+  button.ctl{ appearance:none; border:1px solid var(--line); background:var(--panel2); color:var(--ink);
+    font-family:inherit; padding:10px 0 6px; border-radius:2px; display:flex; flex-direction:column;
+    align-items:center; gap:2px; cursor:pointer; min-height:46px; touch-action:manipulation;
+    transition:background .07s, transform .05s; }
+  button.ctl .ic{ font-size:15px; line-height:1; }
+  button.ctl .tx{ font-size:7px; letter-spacing:.06em; color:var(--muted); }
+  button.ctl.rot{ } button.ctl.rot .ic{ color:var(--gold-soft); font-size:11px; font-family:Georgia,serif; }
+  button.ctl:active{ background:var(--gold); color:#11161f; transform:translateY(1px); }
+  button.ctl:active .tx,button.ctl:active .ic{ color:#11161f; }
+  button.ctl:focus-visible{ outline:2px solid var(--gold-soft); outline-offset:2px; }
+  .overlay{ position:absolute; inset:0; background:rgba(11,17,27,.95); display:flex; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center; padding:20px; gap:12px; }
+  .overlay h2{ font-family:Georgia,serif; font-weight:600; font-size:24px; margin:0; letter-spacing:.04em; }
+  .overlay p{ margin:0; font-size:11px; line-height:1.65; color:var(--muted); max-width:320px; }
+  .overlay .keys{ font-size:9.5px; color:var(--faint); line-height:1.8; }
+  .overlay .keys b{ color:var(--ink); }
+  .start{ appearance:none; border:1px solid var(--gold); background:transparent; color:var(--gold);
+    font-family:Georgia,serif; font-size:15px; letter-spacing:.14em; padding:10px 24px; cursor:pointer;
+    border-radius:2px; transition:background .12s,color .12s; }
+  .start:hover,.start:focus-visible{ background:var(--gold); color:#11161f; outline:none; }
+  .hidden{ display:none !important; }
+  .foot{ font-size:8.5px; color:var(--faint); letter-spacing:.14em; text-transform:uppercase; text-align:center; }
+  @media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="plate">
+    <div><div class="eyebrow" id="sub">Pattern engine</div><div class="title">LVL<span class="five">5</span></div></div>
+    <div class="tier"><div class="eyebrow">Tier</div><b id="tierlabel">2D</b><div class="eyebrow" style="margin-top:2px">of 5</div></div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="k">Score</div><div class="v gold" id="score">0</div></div>
+    <div class="stat"><div class="k">Level</div><div class="v" id="level">1</div></div>
+    <div class="stat"><div class="k">Layers</div><div class="v" id="lines">0</div></div>
+    <div class="stat"><div class="k">Planes</div><div class="v" id="planes">1</div></div>
+  </div>
+  <div class="play">
+    <div class="wellwrap">
+      <canvas id="well" width="320" height="460"></canvas>
+      <div class="seamnote" id="seamnote">cylinder · 1 axis wraps</div>
+      <div class="overlay" id="overlay">
+        <h2 id="ov-title">LVL<span style="color:var(--gold)">5</span></h2>
+        <p id="ov-body">One engine, five dimensions. Five-cell pieces fall into a wrapping well; fill a whole perpendicular layer to clear it. The well climbs 2D → 3D → 4D → 5D, each tier adding an axis and a fistful of rotation planes (1 → 3 → 6 → 10). Scoring runs on Fibonacci; piece hues are spaced by the golden angle.</p>
+        <div class="keys" id="ov-keys">desktop: <b>arrows</b> move · <b>Z X C…</b> rotate · <b>Q/E R/F</b> extra axes · <b>G</b> iso · <b>space</b> drop · <b>H</b> hold · <b>[ ]</b> orbit</div>
+        <button class="start" id="startbtn">BEGIN</button>
+      </div>
+    </div>
+    <div class="side">
+      <div class="box"><div class="label">Next</div><canvas id="next" class="mini" width="120" height="80"></canvas></div>
+      <div class="box"><div class="label">Hold</div><canvas id="hold" class="mini" width="120" height="64"></canvas></div>
+      <div class="box combo idle" id="combobox"><div class="label">Combo</div><div class="v" id="combo">—</div></div>
+      <div class="box"><div class="label">Layers</div><canvas id="gauge" class="mini" width="120" height="140"></canvas></div>
+    </div>
+  </div>
+  <div class="pad" id="pad"></div>
+  <div class="foot" id="foot">5-cell pieces · Soli Deo Gloria</div>
+</div>
+
+<script>
+(()=>{
+"use strict";
+const mod=(n,m)=>((n%m)+m)%m;
+const PHI=1.6180339887, GA=137.50776405; const FIB=[0,100,300,500,800,1300]; const PERFECT=3000;
+const H=13;                                    // gravity axis height (constant)
+const PERP={2:[8],3:[5,5],4:[3,3,3],5:[2,2,2,2]};   // perpendicular axis sizes per tier
+const GROUND_LOCK=480, MAX_RESETS=12, FLASH_MS=160;
+const reduceMotion = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// ---------- color ----------
+function hslToHex(h,s,l){ s/=100;l/=100; const k=n=>(n+h/30)%12; const a=s*Math.min(l,1-l);
+  const f=n=>l-a*Math.max(-1,Math.min(k(n)-3,Math.min(9-k(n),1)));
+  const to=x=>Math.round(255*x).toString(16).padStart(2,"0"); return "#"+to(f(0))+to(f(8))+to(f(4)); }
+const WARM=["#C2603F","#4E8C8A","#B07D2E","#7E6BA8","#6F9B57","#4A6FA5","#B8506E","#C77B3A","#8AA34B","#A85CA0","#5FA8B8","#9C6B4A"];
+function shade(hex,f){ const n=parseInt(hex.slice(1),16); return `rgb(${Math.round(((n>>16)&255)*f)},${Math.round(((n>>8)&255)*f)},${Math.round((n&255)*f)})`; }
+
+// ---------- generic piece generation ----------
+function signedPerms(D){ // all 2^D · D! signed permutations
+  const perms=[]; (function go(a,rest){ if(!rest.length){perms.push(a.slice());return;}
+    for(let i=0;i<rest.length;i++){ a.push(rest[i]); go(a,rest.slice(0,i).concat(rest.slice(i+1))); a.pop(); } })([], [...Array(D).keys()]);
+  const out=[]; for(const p of perms){ for(let s=0;s<(1<<D);s++){ const sg=[]; for(let i=0;i<D;i++) sg.push((s>>i)&1?-1:1); out.push({p,s:sg}); } }
+  return out;
+}
+const applyM=(m,c)=>m.p.map((pi,i)=>m.s[i]*c[pi]);
+function normD(cells){ const D=cells[0].length; const mn=Array(D).fill(Infinity);
+  for(const c of cells)for(let i=0;i<D;i++)mn[i]=Math.min(mn[i],c[i]);
+  return cells.map(c=>c.map((v,i)=>v-mn[i])).sort((a,b)=>{for(let i=0;i<D;i++)if(a[i]!==b[i])return a[i]-b[i];return 0;}); }
+const keyD=cells=>cells.map(c=>c.join(",")).join(";");
+const PIECECACHE={}, PERMCACHE={};
+function getMats(D){ if(!PERMCACHE[D])PERMCACHE[D]=signedPerms(D); return PERMCACHE[D]; }
+function genPieces(D){
+  if(PIECECACHE[D]) return PIECECACHE[D];
+  if(D===5){ // a 5-cell piece spans <=4 dims, so 5D shapes == 4D shapes embedded (append axis-4=0)
+    const p=genPieces(4).map(pc=>({cells:normD(pc.cells.map(c=>c.concat([0]))), color:pc.color, flat:pc.flat}));
+    PIECECACHE[5]=p; return p; }
+  let polys=new Map(); const o=Array(D).fill(0); polys.set(o.join(","),[o.slice()]);
+  const dirs=[]; for(let i=0;i<D;i++){ const a=Array(D).fill(0);a[i]=1;dirs.push(a.slice()); const b=Array(D).fill(0);b[i]=-1;dirs.push(b.slice()); }
+  for(let n=1;n<5;n++){ const next=new Map();
+    for(const cells of polys.values()){ const set=new Set(cells.map(c=>c.join(",")));
+      for(const c of cells)for(const d of dirs){ const nc=c.map((v,i)=>v+d[i]); if(set.has(nc.join(",")))continue;
+        const nn=normD(cells.concat([nc])); next.set(keyD(nn),nn); } }
+    polys=next; }
+  const mats=getMats(D), seen=new Set(), free=[];
+  for(const cells of polys.values()){ let canon=null;
+    for(const m of mats){ const t=normD(cells.map(c=>applyM(m,c))); const k=keyD(t); if(canon===null||k<canon)canon=k; }
+    if(!seen.has(canon)){ seen.add(canon); free.push(cells); } }
+  let w=0,cool=0;
+  const pieces=free.map(cells=>{ let mxAxis=Array(D).fill(0); for(const c of cells)for(let i=0;i<D;i++)mxAxis[i]=Math.max(mxAxis[i],c[i]);
+    const flat=mxAxis.some(v=>v===0);
+    const color= flat? WARM[w++%WARM.length] : hslToHex((cool++*GA)%360, 30, 60);
+    return {cells:normD(cells), color, flat}; });
+  PIECECACHE[D]=pieces; return pieces;
+}
+// best orientation of a piece that fits the current well (perp spans within SIZE); null if unplaceable
+function fitOrientation(cells){ let best=null, bestScore=1e9;
+  for(const m of getMats(D)){ const t=normD(cells.map(c=>applyM(m,c)));
+    let ok=true,maxPerp=0; for(let i=0;i<D-1;i++){ let e=0; for(const c of t)e=Math.max(e,c[i]); if(e>SIZE[i]-1){ok=false;break;} maxPerp=Math.max(maxPerp,e); }
+    if(!ok) continue; let ge=0; for(const c of t)ge=Math.max(ge,c[D-1]); const score=ge*10+maxPerp;
+    if(score<bestScore){ bestScore=score; best=t; } }
+  return best; }
+
+// ---------- engine state ----------
+let D, SIZE, PERPN, PERPPROD, PLANES, PIECES, PLACEABLE, SPAWNCELLS;
+let board, layerCount, score, layers, level, tierLayers, combo;
+let current, nextIdx, holdIdx, holdUsed, bag, over, paused, started;
+let dropAcc, softHeld, lockTimer, lockResets, lastT, yaw, viewIdx, flash, advancing;
+const BASE_YAW=Math.PI/4;
+
+function setTier(nd, keepScore){
+  D=nd; SIZE=[...PERP[D], H]; PERPN=D-1; PERPPROD=PERP[D].reduce((a,b)=>a*b,1);
+  PLANES=[]; for(let i=0;i<D;i++)for(let j=i+1;j<D;j++)PLANES.push([i,j]);
+  PIECES=genPieces(D);
+  SPAWNCELLS=PIECES.map(p=>fitOrientation(p.cells)); PLACEABLE=[]; PIECES.forEach((p,i)=>{ if(SPAWNCELLS[i])PLACEABLE.push(i); });
+  board=new Map(); layerCount=Array(H).fill(0);
+  if(!keepScore){ score=0; layers=0; level=1; } tierLayers=0; combo=0; advancing=false;
+  bag=[]; holdIdx=null; holdUsed=false; nextIdx=drawBag(); viewIdx=0; yaw=BASE_YAW;
+  document.getElementById("tierlabel").textContent=D+"D";
+  document.getElementById("planes").textContent=PLANES.length;
+  document.getElementById("seamnote").textContent =
+    D===2?"cylinder · 1 axis wraps": D===3?"T² torus · 2 axes wrap": D===4?"T³ torus · 3 axes · slice row":"T⁴ torus · 4 axes · slice grid";
+  document.getElementById("sub").textContent =
+    D===2?"Pattern engine · pentomino": D===3?"Pattern engine · pentacube": D===4?"Pattern engine · penta-tesseract":"Pattern engine · penta-penteract";
+  document.getElementById("foot").textContent = PERP[D].join("×")+"×"+H+" · "+PLACEABLE.length+" pieces · "+PLANES.length+" planes";
+  buildPad(); fit();
+}
+function drawBag(){ if(bag.length===0){ bag=[...PLACEABLE]; for(let i=bag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[bag[i],bag[j]]=[bag[j],bag[i]];} } return bag.pop(); }
+
+function spawn(fromHold){
+  const idx = fromHold!==undefined? fromHold : (()=>{const x=nextIdx; nextIdx=drawBag(); return x;})();
+  const cells=(SPAWNCELLS[idx]||PIECES[idx].cells).map(c=>c.slice());
+  const pos=Array(D).fill(0);
+  for(let i=0;i<PERPN;i++){ let mx=0; for(const c of cells)mx=Math.max(mx,c[i]); pos[i]=Math.floor((SIZE[i]-(mx+1))/2); }
+  pos[D-1]=0;
+  current={idx,cells,pos}; lockTimer=0; lockResets=0;
+  if(collide(cells,pos)){ over=true; started=false; showOverlay("topout"); }
+}
+function ckey(world){ const w=world.slice(); for(let i=0;i<PERPN;i++)w[i]=mod(w[i],SIZE[i]); return w.join(","); }
+function collide(cells,pos){ const seen=new Set();
+  for(const c of cells){ const world=c.map((v,i)=>v+pos[i]); const g=world[D-1];
+    if(g>=H) return true; const k=ckey(world);
+    if(seen.has(k)) return true; seen.add(k);
+    if(g>=0 && board.has(k)) return true; }
+  return false; }
+const grounded=()=>{ const p=current.pos.slice(); p[D-1]++; return collide(current.cells,p); };
+function touchLock(){ if(grounded()&&lockResets<MAX_RESETS){ lockTimer=0; lockResets++; } }
+const live=()=>started&&!over&&!paused&&!!current;
+
+// movement: named dirs act on axes 0,1 (view-relative for D>=3); raw axis for w
+function basis(){ return [ {r:[1,0],u:[0,-1]},{r:[0,1],u:[1,0]},{r:[-1,0],u:[0,1]},{r:[0,-1],u:[-1,0]} ][viewIdx]; }
+function panNamed(dir){ if(!live())return; let dx=0,dy=0;
+  if(D===2){ if(dir==='right')dx=1; else if(dir==='left')dx=-1; else return; }
+  else { const b=basis();
+    if(dir==='right'){dx=b.r[0];dy=b.r[1];} else if(dir==='left'){dx=-b.r[0];dy=-b.r[1];}
+    else if(dir==='up'){dx=b.u[0];dy=b.u[1];} else {dx=-b.u[0];dy=-b.u[1];} }
+  const p=current.pos.slice(); p[0]+=dx; if(D>=3)p[1]+=dy;
+  if(!collide(current.cells,p)){ current.pos=p; touchLock(); render(); } }
+function panAxis(ax,dir){ if(!live())return; const p=current.pos.slice(); p[ax]+=dir;
+  if(!collide(current.cells,p)){ current.pos=p; touchLock(); render(); } }
+function tryPlace(nc){ const kicks=[Array(D).fill(0)]; for(let a=0;a<D;a++){ const k1=Array(D).fill(0);k1[a]=1;kicks.push(k1); const k2=Array(D).fill(0);k2[a]=-1;kicks.push(k2); }
+  for(const k of kicks){ const p=current.pos.map((v,ix)=>v+k[ix]); if(!collide(nc,p)){ current.cells=nc; current.pos=p; touchLock(); render(); return true; } } return false; }
+const spin=(cells,i,j)=>cells.map(c=>{ const n=c.slice(); n[i]=-c[j]; n[j]=c[i]; return n; });
+function rotate(planeIdx){ if(!live())return; const [i,j]=PLANES[planeIdx]; tryPlace(normD(spin(current.cells,i,j))); }
+function isoRotate(){ if(!live()||D<5)return; tryPlace(normD(spin(spin(current.cells,0,1),2,3))); }
+function softDrop(){ if(!live())return; const p=current.pos.slice(); p[D-1]++;
+  if(!collide(current.cells,p)){ current.pos=p; score+=1; dropAcc=0; updateHUD(); render(); } }
+function hardDrop(){ if(!live())return; let d=0; while(true){ const p=current.pos.slice(); p[D-1]++; if(collide(current.cells,p))break; current.pos=p; d++; } score+=d*2; lock(); }
+function hold(){ if(!live()||holdUsed)return; const cur=current.idx;
+  if(holdIdx===null){ holdIdx=cur; spawn(); } else { const h=holdIdx; holdIdx=cur; spawn(h); }
+  holdUsed=true; render(); }
+function ghostPos(){ const p=current.pos.slice(); let it=0; while(it++<H+3){ const n=p.slice(); n[D-1]++; if(collide(current.cells,n))break; p[D-1]++; } return p; }
+
+function lock(){ const flashKeys=[];
+  for(const c of current.cells){ const world=c.map((v,i)=>v+current.pos[i]); const g=world[D-1];
+    if(g<0){ over=true; started=false; showOverlay("topout"); render(); return; }
+    const k=ckey(world); board.set(k,current.idx); layerCount[g]++; flashKeys.push(k); }
+  if(!reduceMotion) flash={keys:new Set(flashKeys), t:performance.now()};
+  clearLayers(); holdUsed=false; if(!over) spawn(); updateHUD(); render();
+}
+function clearLayers(){ const full=[]; for(let g=0;g<H;g++) if(layerCount[g]===PERPPROD) full.push(g);
+  const n=full.length; if(n===0){ combo=0; updateCombo(); return; }
+  const F=new Set(full); const nb=new Map(); const nc=Array(H).fill(0);
+  for(const [k,idx] of board){ const coords=k.split(",").map(Number); const g=coords[D-1]; if(F.has(g))continue;
+    let shift=0; for(const f of full) if(f>g) shift++; coords[D-1]=g+shift; const nk=coords.join(",");
+    nb.set(nk,idx); nc[g+shift]++; }
+  board=nb; layerCount=nc; layers+=n; tierLayers+=n;
+  let pts=FIB[Math.min(n,5)]*level; if(combo>0)pts=Math.round(pts*(1+0.382*combo*PHI)); combo++;
+  if(board.size===0) pts+=PERFECT; score+=pts;
+  // progression
+  const within=Math.min(10,1+Math.floor(tierLayers/2)); level=(D-2)*10+within;
+  if(tierLayers>=16 && D<5 && !advancing){ advancing=true; setTimeout(()=>advanceTier(),420); }
+  updateCombo();
+}
+function advanceTier(){ const nd=D+1; started=false; current=null; setTier(nd,true);
+  over=false; started=true; spawn(); showTierSplash(nd); updateHUD(); render(); }
+
+const speedMs=()=>{ const within=((level-1)%10); return Math.max(110,Math.round(950*Math.pow(0.84,within))); };
+
+function tick(t){ requestAnimationFrame(tick); if(!live()){ lastT=t; return; }
+  const dt=Math.min(100,t-lastT); lastT=t; const interval=softHeld?Math.min(50,speedMs()):speedMs();
+  if(grounded()){ lockTimer+=dt; if(lockTimer>=GROUND_LOCK) lock(); }
+  else { dropAcc+=dt; while(dropAcc>=interval){ dropAcc-=interval; const p=current.pos.slice(); p[D-1]++;
+      if(!collide(current.cells,p)){ current.pos=p; if(softHeld)score+=1; } else break; } lockTimer=0; render(); }
+  if(flash && t-flash.t>FLASH_MS) flash=null;
+  updateHUD();
+}
+
+// ---------- iso projection (shared by 3D and 4D slices) ----------
+const well=document.getElementById("well"), wx=well.getContext("2d");
+let SCALE=20, OFFX=0, OFFY=0, FW=5, FD=5; // floor dims used by current iso
+function rawXY(gx,gy,h){ const x=gx-FW/2, y=gy-FD/2;
+  const X=x*Math.cos(yaw)-y*Math.sin(yaw); const Yd=(x*Math.sin(yaw)+y*Math.cos(yaw))*0.52;
+  return [X, Yd - h*0.80]; }
+function P(gx,gy,h){ const [rx,ry]=rawXY(gx,gy,h); return [OFFX+rx*SCALE, OFFY+ry*SCALE]; }
+function quad(ctx,pts,fill,stroke){ ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]);
+  for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i][0],pts[i][1]); ctx.closePath();
+  if(fill){ctx.fillStyle=fill;ctx.fill();} if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke();} }
+function drawCube(ctx,gx,gy,gz,color,wire,hi){ const h0=(H-1-gz),h1=h0+1,g=0.07;
+  const x0=gx+g,x1=gx+1-g,y0=gy+g,y1=gy+1-g; const cs=Math.cos(yaw),sn=Math.sin(yaw);
+  const xf=(cs>=0)?x1:x0, yf=(sn>=0)?y1:y0;
+  const top=[P(x0,y0,h1),P(x1,y0,h1),P(x1,y1,h1),P(x0,y1,h1)];
+  const fX=[P(xf,y0,h0),P(xf,y1,h0),P(xf,y1,h1),P(xf,y0,h1)];
+  const fY=[P(x0,yf,h0),P(x1,yf,h0),P(x1,yf,h1),P(x0,yf,h1)];
+  if(wire){ const st="rgba(231,224,207,.32)"; quad(ctx,top,null,st); quad(ctx,fX,null,"rgba(231,224,207,.16)"); quad(ctx,fY,null,"rgba(231,224,207,.16)"); return; }
+  quad(ctx,fX,shade(color,0.58),"rgba(0,0,0,.30)"); quad(ctx,fY,shade(color,0.74),"rgba(0,0,0,.30)");
+  quad(ctx,top,hi?"#F2E4C0":color,"rgba(255,255,255,.10)"); }
+
+function isoWell(){ const cs=Math.cos(yaw),sn=Math.sin(yaw);
+  wx.strokeStyle="#202c44"; wx.lineWidth=1;
+  for(let i=0;i<=FW;i++){const a=P(i,0,0),b=P(i,FD,0);wx.beginPath();wx.moveTo(a[0],a[1]);wx.lineTo(b[0],b[1]);wx.stroke();}
+  for(let j=0;j<=FD;j++){const a=P(0,j,0),b=P(FW,j,0);wx.beginPath();wx.moveTo(a[0],a[1]);wx.lineTo(b[0],b[1]);wx.stroke();}
+  wx.strokeStyle="rgba(212,162,78,.5)"; wx.lineWidth=2;
+  for(const [vx,vy] of [[0,0],[FW,0],[FW,FD],[0,FD]]){const a=P(vx,vy,0),b=P(vx,vy,H);wx.beginPath();wx.moveTo(a[0],a[1]);wx.lineTo(b[0],b[1]);wx.stroke();} }
+function isoFit(fw,fd,regionX,regionW,regionH,regionY){ FW=fw; FD=fd; regionY=regionY||0;
+  let minx=1e9,maxx=-1e9,miny=1e9,maxy=-1e9;
+  for(const gx of[0,fw])for(const gy of[0,fd])for(const h of[0,H]){const[rx,ry]=rawXY(gx,gy,h);
+    minx=Math.min(minx,rx);maxx=Math.max(maxx,rx);miny=Math.min(miny,ry);maxy=Math.max(maxy,ry);}
+  const m=10; SCALE=Math.min((regionW-2*m)/(maxx-minx),(regionH-2*m)/(maxy-miny));
+  OFFX=regionX+(regionW-(minx+maxx)*SCALE)/2; OFFY=regionY+(regionH-(miny+maxy)*SCALE)/2; }
+
+// ---------- render dispatch ----------
+function fit(){ const avail=Math.min(well.parentElement.clientWidth,340);
+  well.width=avail; well.height=Math.round(avail*(D>=5?1.7:1.42));
+  if(D===3) isoFit(SIZE[0],SIZE[1],0,well.width,well.height);
+  render(); }
+function render(){ wx.clearRect(0,0,well.width,well.height);
+  if(D===2) render2D(); else if(D===3) render3D(); else renderSlices(); renderNext(); renderHold(); renderGauge(); }
+
+function render2D(){ const Wd=SIZE[0], cell=Math.min(well.width/Wd, well.height/H);
+  const offx=(well.width-cell*Wd)/2, offy=(well.height-cell*H)/2;
+  wx.strokeStyle="#222e46"; wx.lineWidth=1;
+  for(let x=0;x<=Wd;x++){wx.beginPath();wx.moveTo(offx+x*cell+.5,offy);wx.lineTo(offx+x*cell+.5,offy+H*cell);wx.stroke();}
+  for(let y=0;y<=H;y++){wx.beginPath();wx.moveTo(offx,offy+y*cell+.5);wx.lineTo(offx+Wd*cell,offy+y*cell+.5);wx.stroke();}
+  const dc=(x,y,col,mode,hi)=>{ const px=offx+x*cell,py=offy+y*cell,p=Math.max(1,cell*0.06);
+    if(mode==="ghost"){wx.strokeStyle="rgba(231,224,207,.30)";wx.lineWidth=1;wx.strokeRect(px+p,py+p,cell-2*p,cell-2*p);return;}
+    wx.fillStyle=hi?"#F2E4C0":col; wx.fillRect(px+p,py+p,cell-2*p,cell-2*p);
+    wx.fillStyle="rgba(255,255,255,.13)"; wx.fillRect(px+p,py+p,cell-2*p,(cell-2*p)*.34);
+    wx.strokeStyle="rgba(0,0,0,.3)"; wx.strokeRect(px+p,py+p,cell-2*p,cell-2*p); };
+  for(const [k,idx] of board){ const [x,y]=k.split(",").map(Number); dc(x,y,PIECES[idx].color,"solid", flash&&flash.keys.has(k)); }
+  if(live()){ const gp=ghostPos();
+    for(const c of current.cells){ const y=gp[1]+c[1]; if(y>=0) dc(mod(gp[0]+c[0],Wd),y,PIECES[current.idx].color,"ghost"); }
+    for(const c of current.cells){ const y=current.pos[1]+c[1]; if(y>=0) dc(mod(current.pos[0]+c[0],Wd),y,PIECES[current.idx].color,"solid"); } }
+  const gg=wx.createLinearGradient(offx,0,offx+6,0); gg.addColorStop(0,"rgba(212,162,78,.9)"); gg.addColorStop(1,"rgba(212,162,78,0)");
+  wx.fillStyle=gg; wx.fillRect(offx,offy,5,H*cell);
+  const g2=wx.createLinearGradient(offx+Wd*cell,0,offx+Wd*cell-6,0); g2.addColorStop(0,"rgba(212,162,78,.9)"); g2.addColorStop(1,"rgba(212,162,78,0)");
+  wx.fillStyle=g2; wx.fillRect(offx+Wd*cell-5,offy,5,H*cell);
+}
+function collectCubes(filters){ filters=filters||[]; const cs=Math.cos(yaw),sn=Math.sin(yaw); const cubes=[];
+  for(const [k,idx] of board){ const c=k.split(",").map(Number);
+    if(filters.some(f=>c[f.ax]!==f.val)) continue;
+    cubes.push({x:c[0],y:c[1],z:c[D-1],color:shade(PIECES[idx].color,0.92),wire:false,hi:flash&&flash.keys.has(k)}); }
+  if(live()){ const gp=ghostPos();
+    const push=(pos,wire)=>{ for(const c of current.cells){ const world=c.map((v,i)=>v+pos[i]);
+      if(filters.some(f=>mod(world[f.ax],SIZE[f.ax])!==f.val)) continue; const z=world[D-1]; if(z<0)continue;
+      cubes.push({x:mod(world[0],SIZE[0]),y:mod(world[1],SIZE[1]),z,color:wire?null:PIECES[current.idx].color,wire}); } };
+    push(gp,true); push(current.pos,false); }
+  cubes.sort((a,b)=>((a.x+0.5-FW/2)*cs+(a.y+0.5-FD/2)*sn+(H-1-a.z)*1.2)-((b.x+0.5-FW/2)*cs+(b.y+0.5-FD/2)*sn+(H-1-b.z)*1.2));
+  return cubes; }
+function render3D(){ isoWell();
+  if(live()){ const foot=new Set(); for(const c of current.cells)foot.add(mod(current.pos[0]+c[0],SIZE[0])+","+mod(current.pos[1]+c[1],SIZE[1]));
+    for(const f of foot){ const[fx,fy]=f.split(",").map(Number); quad(wx,[P(fx+.06,fy+.06,0),P(fx+.94,fy+.06,0),P(fx+.94,fy+.94,0),P(fx+.06,fy+.94,0)],"rgba(212,162,78,.15)",null); } }
+  for(const c of collectCubes()) drawCube(wx,c.x,c.y,c.z,c.color,c.wire,c.hi); }
+function renderSlices(){
+  const extra=[]; for(let i=2;i<D-1;i++) extra.push(i);          // perp axes beyond 0,1
+  const a2=SIZE[2], a3=extra.length>1?SIZE[3]:1;
+  const cols=a2, rows=a3, rw=well.width/cols, rh=well.height/rows;
+  for(let v3=0; v3<a3; v3++) for(let v2=0; v2<a2; v2++){
+    isoFit(SIZE[0],SIZE[1], v2*rw, rw, rh, v3*rh); isoWell();
+    const filters=[{ax:2,val:v2}]; if(extra.length>1) filters.push({ax:3,val:v3});
+    if(live()){ const foot=new Set();
+      for(const c of current.cells){ if(filters.some(f=>mod(current.pos[f.ax]+c[f.ax],SIZE[f.ax])!==f.val)) continue;
+        foot.add(mod(current.pos[0]+c[0],SIZE[0])+","+mod(current.pos[1]+c[1],SIZE[1])); }
+      for(const f of foot){ const[fx,fy]=f.split(",").map(Number); quad(wx,[P(fx+.06,fy+.06,0),P(fx+.94,fy+.06,0),P(fx+.94,fy+.94,0),P(fx+.06,fy+.94,0)],"rgba(212,162,78,.15)",null); } }
+    for(const c of collectCubes(filters)) drawCube(wx,c.x,c.y,c.z,c.color,c.wire,c.hi);
+    wx.fillStyle="rgba(212,162,78,.6)"; wx.font="10px ui-monospace"; wx.textAlign="center";
+    wx.fillText(extra.length>1?("w="+v2+","+v3):("w="+v2), v2*rw+rw/2, v3*rh+rh-4);
+  } }
+
+// ---------- mini canvases ----------
+const nx=document.getElementById("next"), nxc=nx.getContext("2d");
+const hd=document.getElementById("hold"), hdc=hd.getContext("2d");
+function miniPiece(ctx,cv,idx){ ctx.clearRect(0,0,cv.width,cv.height); if(idx===null||idx===undefined)return;
+  const pc=PIECES[idx], cells=pc.cells, col=pc.color, Dl=cells[0].length;
+  if(Dl===2){ let X=0,Y=0; for(const c of cells){X=Math.max(X,c[0]);Y=Math.max(Y,c[1]);} const sc=Math.min(cv.width/(X+2),cv.height/(Y+2));
+    const ox=(cv.width-(X+1)*sc)/2, oy=(cv.height-(Y+1)*sc)/2;
+    for(const c of cells){ ctx.fillStyle=col; ctx.fillRect(ox+c[0]*sc+1,oy+c[1]*sc+1,sc-2,sc-2); } return; }
+  let X=0,Y=0,Z=0; for(const c of cells){X=Math.max(X,c[0]);Y=Math.max(Y,c[1]);Z=Math.max(Z,c[Dl-1]);}
+  const cs=Math.cos(BASE_YAW),sn=Math.sin(BASE_YAW), sc=Math.min(11, cv.height/ (Z+3));
+  const pr=(gx,gy,h)=>{ const x=gx-(X+1)/2,y=gy-(Y+1)/2; return [cv.width/2+(x*cs-y*sn)*sc, cv.height/2+4+(x*sn+y*cs)*0.52*sc-h*0.80*sc]; };
+  const list=cells.map(c=>({x:c[0],y:c[1],z:c[Dl-1]})).sort((a,b)=>((a.x*cs+a.y*sn)+(Z-a.z)*1.2)-((b.x*cs+b.y*sn)+(Z-b.z)*1.2));
+  for(const c of list){ const h0=(Z-c.z),h1=h0+1,x0=c.x+.07,x1=c.x+.93,y0=c.y+.07,y1=c.y+.93,xf=(cs>=0)?x1:x0,yf=(sn>=0)?y1:y0;
+    const Q=(p,f,s)=>{ctx.beginPath();ctx.moveTo(p[0][0],p[0][1]);for(let i=1;i<p.length;i++)ctx.lineTo(p[i][0],p[i][1]);ctx.closePath();if(f){ctx.fillStyle=f;ctx.fill();}if(s){ctx.strokeStyle=s;ctx.stroke();}};
+    Q([pr(xf,y0,h0),pr(xf,y1,h0),pr(xf,y1,h1),pr(xf,y0,h1)],shade(col,.58),null);
+    Q([pr(x0,yf,h0),pr(x1,yf,h0),pr(x1,yf,h1),pr(x0,yf,h1)],shade(col,.74),null);
+    Q([pr(x0,y0,h1),pr(x1,y0,h1),pr(x1,y1,h1),pr(x0,y1,h1)],col,"rgba(255,255,255,.1)"); } }
+function renderNext(){ miniPiece(nxc,nx,nextIdx); }
+function renderHold(){ miniPiece(hdc,hd,holdIdx); }
+const gauge=document.getElementById("gauge"), gx2=gauge.getContext("2d");
+function renderGauge(){ gx2.clearRect(0,0,gauge.width,gauge.height); const rowH=gauge.height/H;
+  for(let g=0;g<H;g++){ const f=layerCount[g]/PERPPROD, y=g*rowH;
+    gx2.fillStyle="#0e1622"; gx2.fillRect(0,y,gauge.width,rowH-1);
+    gx2.fillStyle=f>=1?"#D4A24E":(f>0.8?"rgba(212,162,78,.7)":"rgba(110,139,166,.55)"); gx2.fillRect(0,y,gauge.width*f,rowH-1); }
+  gx2.strokeStyle="rgba(51,65,95,.6)"; gx2.strokeRect(0.5,0.5,gauge.width-1,gauge.height-1); }
+
+// .-. HUD / overlay .-.
+const $=id=>document.getElementById(id);
+function updateHUD(){ $("score").textContent=score.toLocaleString(); $("level").textContent=level; $("lines").textContent=layers; }
+function updateCombo(){ const b=$("combobox"); if(combo>1){ b.classList.remove("idle"); $("combo").textContent="×"+combo; } else { b.classList.add("idle"); $("combo").textContent="—"; } }
+function showOverlay(kind){ const ov=$("overlay"); ov.classList.remove("hidden");
+  if(kind==="topout"){ $("ov-title").innerHTML="TOPPED OUT";
+    $("ov-body").innerHTML="The well filled to the rim at tier "+D+"D. Final score <b style='color:var(--gold)'>"+score.toLocaleString()+"</b>, "+layers+" layers cleared.";
+    $("ov-keys").classList.add("hidden"); $("startbtn").textContent="RESTART"; }
+  else if(kind==="pause"){ $("ov-title").innerHTML="PAUSED"; $("ov-body").textContent="The well holds."; $("ov-keys").classList.add("hidden"); $("startbtn").textContent="RESUME"; } }
+function hideOverlay(){ $("overlay").classList.add("hidden"); }
+function showTierSplash(nd){ paused=true; const ov=$("overlay"); ov.classList.remove("hidden");
+  $("ov-title").innerHTML="TIER "+nd+"D"; $("ov-keys").classList.add("hidden"); $("startbtn").classList.add("hidden");
+  $("ov-body").innerHTML = nd===3? "The well lifts into three dimensions — a T² torus floor, the 12 flat shapes you know plus 11 new solids, and three rotation planes.":
+    nd===4? "Four dimensions. The well becomes three 3D slices side by side; pieces now span the slices at once, with six rotation planes.":
+    "Five dimensions. A 2×2 grid of slices, ten rotation planes, and the ISO control — a double rotation in two planes at once, with no lower-dimensional shadow. The frontier.";
+  setTimeout(()=>{ hideOverlay(); $("startbtn").classList.remove("hidden"); paused=false; lastT=performance.now(); }, 2100); }
+
+function begin(){ setTier(2,false);
+  hideOverlay(); $("ov-keys").classList.remove("hidden"); $("startbtn").classList.remove("hidden");
+  started=true; over=false; paused=false; softHeld=false; dropAcc=0; lastT=performance.now(); spawn(); updateHUD(); render(); }
+function startOrResume(){ if(!started||over){ begin(); } else if(paused){ paused=false; hideOverlay(); lastT=performance.now(); } }
+function togglePause(){ if(!started||over)return; paused=!paused; if(paused)showOverlay("pause"); else { hideOverlay(); lastT=performance.now(); } }
+function orbit(dir){ viewIdx=mod(viewIdx+dir,4); yaw=BASE_YAW+viewIdx*Math.PI/2; if(D===3)isoFit(SIZE[0],SIZE[1],0,well.width,well.height); render(); }
+
+// ---------- adaptive control pad ----------
+const AXN=["U","V"]; // labels for extra perp axes 2,3
+function buildPad(){ const pad=$("pad"); pad.innerHTML="";
+  const mk=(act,ic,tx,cls)=>`<button class="ctl ${cls||''}" data-act="${act}"><span class="ic">${ic}</span><span class="tx">${tx}</span></button>`;
+  // rotation rows (chunk into rows of <=5)
+  const rotBtns=PLANES.map((pl,i)=>{ const [a,b]=pl; const lab=(b===D-1)?("TIP"+a):("SP"+a+b); return mk("rot:"+i,"R"+(i+1),lab,"rot"); });
+  for(let s=0;s<rotBtns.length;s+=5){ const chunk=rotBtns.slice(s,s+5); const r=document.createElement("div"); r.className="row";
+    r.style.gridTemplateColumns=`repeat(${chunk.length},1fr)`; r.innerHTML=chunk.join(""); pad.appendChild(r); }
+  // extra perp-axis movers (axes 2..D-2)
+  const extra=[]; for(let i=2;i<D-1;i++) extra.push(i);
+  if(extra.length){ const r=document.createElement("div"); r.className="row"; r.style.gridTemplateColumns=`repeat(${extra.length*2},1fr)`;
+    r.innerHTML=extra.map((ax,k)=>mk("axis:"+ax+":-1","◁",AXN[k]+"−")+mk("axis:"+ax+":1","▷",AXN[k]+"+")).join(""); pad.appendChild(r); }
+  // movement
+  if(D===2){ const r=document.createElement("div"); r.className="row"; r.style.gridTemplateColumns="repeat(3,1fr)";
+    r.innerHTML=mk("pan:left","◀","LEFT")+mk("rot:0","↻","ROTATE","rot")+mk("pan:right","▶","RIGHT"); pad.appendChild(r); }
+  else { const r=document.createElement("div"); r.className="row"; r.style.gridTemplateColumns="repeat(3,1fr)";
+    r.innerHTML=`<span></span>`+mk("pan:up","▲","BACK")+`<span></span>`+mk("pan:left","◀","LEFT")+mk("pan:down","▼","FRONT")+mk("pan:right","▶","RIGHT"); pad.appendChild(r); }
+  // drops + hold + orbit (+iso at 5D)
+  const r3=document.createElement("div"); r3.className="row";
+  const last = mk("hold","⇄","HOLD")+mk("soft","⇣","SOFT")+mk("hard","⤓","HARD")+(D>=3?mk("orbit","⟲","ORBIT"):"")+(D>=5?mk("iso","⊗","ISO","rot"):"");
+  const ncol=3+(D>=3?1:0)+(D>=5?1:0); r3.style.gridTemplateColumns=`repeat(${ncol},1fr)`; r3.innerHTML=last; pad.appendChild(r3);
+}
+$("pad").addEventListener("pointerdown",e=>{ const b=e.target.closest("button"); if(!b)return; e.preventDefault();
+  const a=b.dataset.act; if(!a)return; const parts=a.split(":");
+  if(a==="soft"){ softHeld=true; softDrop(); }
+  else if(a==="hard") hardDrop(); else if(a==="hold") hold(); else if(a==="orbit") orbit(1); else if(a==="iso") isoRotate();
+  else if(parts[0]==="rot") rotate(+parts[1]); else if(parts[0]==="pan") panNamed(parts[1]); else if(parts[0]==="axis") panAxis(+parts[1],+parts[2]); });
+window.addEventListener("pointerup",()=>{ softHeld=false; });
+
+// ---------- keyboard ----------
+$("startbtn").addEventListener("click",startOrResume);
+window.addEventListener("keydown",e=>{ if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Space","ShiftLeft","ShiftRight"].includes(e.code))e.preventDefault();
+  const rk=["KeyZ","KeyX","KeyC","KeyV","KeyB","KeyN","KeyM","Comma","Period","Slash"];
+  if(e.code==="ArrowLeft")panNamed("left"); else if(e.code==="ArrowRight")panNamed("right");
+  else if(e.code==="ArrowUp"){ if(D===2)rotate(0); else panNamed("up"); }
+  else if(e.code==="ArrowDown"){ if(D===2){softHeld=true;softDrop();} else panNamed("down"); }
+  else if(e.code==="KeyQ"&&D>=4)panAxis(2,-1); else if(e.code==="KeyE"&&D>=4)panAxis(2,1);
+  else if(e.code==="KeyR"&&D>=5)panAxis(3,-1); else if(e.code==="KeyF"&&D>=5)panAxis(3,1);
+  else if(e.code==="KeyG"&&D>=5)isoRotate();
+  else if(rk.includes(e.code)){ const i=rk.indexOf(e.code); if(i<PLANES.length)rotate(i); }
+  else if(e.code==="ShiftLeft"||e.code==="ShiftRight"){softHeld=true;softDrop();}
+  else if(e.code==="Space")hardDrop(); else if(e.code==="KeyH")hold();
+  else if(e.code==="BracketLeft")orbit(-1); else if(e.code==="BracketRight")orbit(1);
+  else if(e.code==="KeyP")togglePause(); else if(e.code==="Enter")startOrResume(); });
+window.addEventListener("keyup",e=>{ if(["ShiftLeft","ShiftRight","ArrowDown"].includes(e.code))softHeld=false; });
+
+// ---------- boot ----------
+setTier(2,false); started=false; over=false; paused=false;
+window.addEventListener("resize",fit); updateHUD(); render();
+requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
+<!-- #1<3 -->
